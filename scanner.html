@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    .scanner-page {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+    }
+
+    .scanner-header {
+      height: 60px;
+      background: #111;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .scanner-close {
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+    }
+
+    .scanner-camera {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #reader {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .scan-frame {
+      position: absolute;
+      width: 80%;
+      max-width: 420px;
+      height: 150px;
+      border: 3px solid #00ff88;
+      border-radius: 12px;
+      pointer-events: none;
+    }
+
+    .scanner-instruction {
+      position: absolute;
+      bottom: 35px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: #fff;
+      font-size: 14px;
+      padding: 0 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="scanner-page">
+
+    <div class="scanner-header">
+
+      <span>SCAN BARCODE</span>
+
+      <button
+        type="button"
+        class="scanner-close"
+        onclick="closeScanner()">
+        ✕
+      </button>
+
+    </div>
+
+
+    <div class="scanner-camera">
+
+      <div id="reader"></div>
+
+      <div class="scan-frame"></div>
+
+      <div class="scanner-instruction">
+        Point the camera at the barcode
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+
+  <script>
+
+    let scanner = null;
+    let scannerStarted = false;
+
+
+    function startScanner(){
+
+      console.log("SCANNER PAGE LOADED");
+
+      if(typeof Html5Qrcode === "undefined"){
+
+        console.error("Html5Qrcode library not loaded.");
+
+        return;
+
+      }
+
+
+      scanner = new Html5Qrcode("reader");
+
+
+      scanner.start(
+
+        {
+          facingMode: "environment"
+        },
+
+        {
+          fps: 10,
+          qrbox: {
+            width: 350,
+            height: 150
+          }
+        },
+
+        function(decodedText){
+
+          console.log(
+            "BARCODE DETECTED:",
+            decodedText
+          );
+
+
+          if(scannerStarted){
+
+            return;
+
+          }
+
+
+          scannerStarted = true;
+
+
+          scanner.stop()
+
+            .then(function(){
+
+              console.log(
+                "SCANNER STOPPED"
+              );
+
+
+              // Send barcode back
+              // to parent window
+
+              if(window.opener){
+
+                window.opener.postMessage(
+                  {
+                    type: "BARCODE_SCANNED",
+                    barcode: decodedText
+                  },
+                  "*"
+                );
+
+              }
+
+
+              window.close();
+
+            })
+
+            .catch(function(error){
+
+              console.error(
+                "SCANNER STOP ERROR:",
+                error
+              );
+
+              window.close();
+
+            });
+
+        },
+
+        function(errorMessage){
+
+          // Normal scanning errors.
+          // Ignore.
+
+        }
+
+      )
+
+      .then(function(){
+
+        console.log(
+          "LIVE CAMERA STARTED"
+        );
+
+      })
+
+      .catch(function(error){
+
+        console.error(
+          "CAMERA ERROR:",
+          error
+        );
+
+      });
+
+    }
+
+
+    function closeScanner(){
+
+      if(scanner){
+
+        scanner.stop()
+
+          .then(function(){
+
+            window.close();
+
+          })
+
+          .catch(function(){
+
+            window.close();
+
+          });
+
+      }else{
+
+        window.close();
+
+      }
+
+    }
+
+
+    window.onload = function(){
+
+      startScanner();
+
+    };
+
+  </script>
+
+</body>
+</html>
